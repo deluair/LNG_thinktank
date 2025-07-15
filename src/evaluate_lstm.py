@@ -64,8 +64,8 @@ def evaluate_lstm_model():
     plt.ylabel('Price (USD per Million BTU)')
     plt.legend()
     plt.grid(True)
-    plt.savefig('../lstm_multivariate_evaluation_plot.png')
-    print("\nMultivariate LSTM evaluation plot saved as lstm_multivariate_evaluation_plot.png")
+    plt.savefig('data/lstm_multivariate_evaluation_plot.png') # Changed path here
+    print("\nMultivariate LSTM evaluation plot saved as data/lstm_multivariate_evaluation_plot.png")
 
 if __name__ == "__main__":
     evaluate_lstm_model()
