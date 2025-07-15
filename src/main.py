@@ -55,17 +55,26 @@ def get_lstm_forecast(months):
     current_batch = last_data_points_scaled.reshape(1, look_back, features.shape[1])
 
     for _ in range(months):
-        next_prediction_scaled = model.predict(current_batch)
-        # To inverse transform, we need to create a dummy array with the same number of features
-        dummy_array = np.zeros((1, features.shape[1]))
-        dummy_array[0, 0] = next_prediction_scaled[0, 0] # Assuming price is the first feature
-        next_prediction = scaler.inverse_transform(dummy_array)[0, 0]
-        predictions.append(next_prediction)
+        next_prediction_scaled = model.predict(current_batch) # This predicts only LNG price
 
-        # Update current_batch for the next prediction
-        # For simplicity, we'll assume future oil and coal prices are the last known values
-        new_row_scaled = np.array([[next_prediction_scaled[0, 0], current_batch[0, -1, 1], current_batch[0, -1, 2]]]) # Use predicted price, last known oil and coal prices
-        current_batch = np.append(current_batch[:, 1:, :], new_row_scaled.reshape(1, 1, features.shape[1]), axis=1)
+        # Create a dummy array of the correct shape for inverse transformation
+        dummy_array_for_inverse = np.zeros((1, features.shape[1]))
+        dummy_array_for_inverse[0, 0] = next_prediction_scaled[0, 0] # Place predicted LNG price
+
+        # Inverse transform only the predicted LNG price for the output
+        next_prediction_unscaled_lng = scaler.inverse_transform(dummy_array_for_inverse)[0, 0]
+        predictions.append(next_prediction_unscaled_lng)
+
+        # Get the scaled oil and coal prices from the last step of the current batch
+        scaled_oil_price = current_batch[0, -1, 1]
+        scaled_coal_price = current_batch[0, -1, 2]
+
+        # Construct the new scaled row for the next time step
+        # Predicted LNG price (scaled), and persistence for oil and coal (scaled)
+        new_scaled_row = np.array([next_prediction_scaled[0, 0], scaled_oil_price, scaled_coal_price])
+
+        # Update current_batch with the new scaled row
+        current_batch = np.append(current_batch[:, 1:, :], new_scaled_row.reshape(1, 1, features.shape[1]), axis=1)
 
     return np.array(predictions).flatten()
 

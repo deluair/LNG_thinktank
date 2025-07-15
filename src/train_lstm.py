@@ -45,10 +45,11 @@ def train_lstm_model(data):
 
     # Create and fit the LSTM network
     model = Sequential()
-    model.add(LSTM(50, input_shape=(look_back, features.shape[1])))
+    model.add(LSTM(50, return_sequences=True, input_shape=(look_back, features.shape[1])))
+    model.add(LSTM(50))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer='adam')
-    model.fit(trainX, trainY, epochs=100, batch_size=1, verbose=2)
+    model.fit(trainX, trainY, epochs=200, batch_size=1, verbose=2) # Increased epochs to 200
 
     return model, scaler
 
