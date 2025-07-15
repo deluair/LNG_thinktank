@@ -5,6 +5,7 @@ import pandas as pd
 import joblib
 from keras.models import load_model
 import numpy as np
+import matplotlib.pyplot as plt
 
 from data_preprocessing import preprocess_data
 
@@ -102,6 +103,49 @@ def main():
 
     for date, price in zip(forecast_dates, forecast):
         print(f"{date.strftime('%Y-%m-%d')}: ${price:.2f}")
+
+    # Generate historical predictions for plotting
+    data = pd.read_csv('data/preprocessed_data.csv', index_col='observation_date', parse_dates=True)
+    model = load_model('../models/lstm_model_multivariate.h5')
+    scaler = joblib.load('../models/lstm_scaler_multivariate.pkl')
+
+    look_back = 12
+    features = data[['price', 'oil_price', 'coal_price']].values
+    dataset = scaler.transform(features)
+
+    # Create dataset for historical predictions
+    historical_X, historical_Y = [], []
+    for i in range(len(dataset) - look_back):
+        historical_X.append(dataset[i:(i + look_back), :])
+        historical_Y.append(dataset[i + look_back, 0])
+
+    historical_X = np.array(historical_X)
+    historical_X = np.reshape(historical_X, (historical_X.shape[0], historical_X.shape[1], features.shape[1]))
+
+    historical_predictions_scaled = model.predict(historical_X)
+
+    dummy_array_hist = np.zeros((len(historical_predictions_scaled), features.shape[1]))
+    dummy_array_hist[:, 0] = historical_predictions_scaled[:, 0]
+    historical_predictions_unscaled = scaler.inverse_transform(dummy_array_hist)[:, 0]
+
+    # Combine actual, historical predictions, and future forecast for plotting
+    plt.figure(figsize=(15, 8))
+    plt.plot(data.index, data['price'], label='Actual Prices', color='blue')
+
+    # Plot historical predictions (aligning dates correctly)
+    # The historical_predictions_unscaled correspond to data.index[look_back:]
+    plt.plot(data.index[look_back:look_back + len(historical_predictions_unscaled)], historical_predictions_unscaled, label='Historical Predictions', color='green', linestyle='--')
+
+    # Plot future forecast
+    plt.plot(forecast_dates, forecast, label='Future Forecast', color='red', linestyle='-')
+
+    plt.title('LNG Price: Actual, Historical Predictions, and Future Forecast')
+    plt.xlabel('Date')
+    plt.ylabel('Price (USD per Million BTU)')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig('data/combined_forecast_plot.png')
+    print("\nCombined forecast plot saved as data/combined_forecast_plot.png")
 
 if __name__ == "__main__":
     main()
